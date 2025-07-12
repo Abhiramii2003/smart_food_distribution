@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'ngo',
     'restaurant',
     'django.contrib.admin',
     'django.contrib.auth',
