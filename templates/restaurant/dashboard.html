@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 350px; border-radius: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="glass-nav text-white" style="background: rgba(245, 158, 11, 0.9);">
+        <div class="sidebar-header d-flex align-items-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1046/1046857.png" alt="Logo" width="40" class="me-2">
+            <h5 class="mb-0 fw-bold">Smart Food</h5>
+        </div>
+        <ul class="list-unstyled components mt-4">
+            <li class="active"><a href="/restaurant/dashboard/"><i class="fas fa-home me-2"></i> Dashboard</a></li>
+            <li><a href="/restaurant/surplus/"><i class="fas fa-plus-circle me-2"></i> Submit Surplus</a></li>
+            <li><a href="/restaurant/logout/"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <div id="content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">Welcome, {{ restaurant.name }} <span class="fs-5 text-muted">📍 {{ restaurant.district }}</span></h2>
+            <a href="/restaurant/surplus/" class="btn btn-warning shadow-sm fw-bold rounded-pill px-4">
+                <i class="fas fa-plus me-2"></i>Submit Food
+            </a>
+        </div>
+
+        <!-- Cards Row -->
+        <div class="row mb-4">
+            <div class="col-md-6 animate-up delay-1">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Total Submissions</h6>
+                    <h2 class="display-5 fw-bold text-warning">{{ total_donations }}</h2>
+                    <p class="mb-0 text-muted">Events with surplus food</p>
+                </div>
+            </div>
+            <div class="col-md-6 animate-up delay-2">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Food Donated</h6>
+                    <h2 class="display-5 fw-bold text-success">{{ total_kg_donated }} <span class="fs-4">kg</span></h2>
+                    <p class="mb-0 text-muted">Total weight donated</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <!-- Chart & Map -->
+            <div class="col-lg-6 mb-4 animate-up delay-3">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-chart-bar me-2 text-warning"></i>Donations by Menu Type</h5>
+                    <canvas id="menuChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4 animate-up delay-4">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-map-marker-alt me-2 text-danger"></i>Your Location</h5>
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Surplus History Table -->
+            <div class="col-lg-8 mb-4 animate-up delay-4">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-list me-2 text-primary"></i>Your Surplus Submissions</h5>
+                    {% if surplus_history %}
+                    <div class="table-responsive">
+                        <table class="table glass-table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Menu</th>
+                                    <th>Qty (kg)</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for food in surplus_history %}
+                                <tr>
+                                    <td><strong>{{ food.event_type }}</strong></td>
+                                    <td><span class="badge bg-secondary">{{ food.menu_type }}</span></td>
+                                    <td>{{ food.prepared_quantity }}</td>
+                                    <td>{{ food.submitted_on|date:"M d, Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted p-4">
+                        <i class="fas fa-clipboard-list fa-3x mb-3 text-light"></i>
+                        <p>No submissions yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="col-lg-4 mb-4 animate-up delay-5">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-hand-holding-heart me-2 text-success"></i>Accepted by NGOs</h5>
+                    <div class="activity-feed">
+                        {% if accepted_history %}
+                            {% for entry in accepted_history|slice:":10" %}
+                            <div class="activity-item" style="border-left-color: var(--secondary);">
+                                <strong>{{ entry.ngo.name }}</strong>
+                                <p class="text-muted small mb-0">Accepted {{ entry.surplus_food.prepared_quantity }}kg ({{ entry.surplus_food.event_type }})</p>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ entry.accepted_on|date:"M d, Y h:i a" }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center mt-3">No one has accepted your food yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ locations|json_script:"location-data" }}
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-data" }}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Map
+    const map = L.map('map').setView([10.8505, 76.2711], 7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const locations = JSON.parse(document.getElementById('location-data').textContent);
+    if (locations.length > 0) {
+        map.setView([locations[0].lat, locations[0].lng], 12);
+        locations.forEach(loc => {
+            L.marker([loc.lat, loc.lng])
+             .addTo(map)
+             .bindPopup(`<b>${loc.name}</b><br>${loc.info}`);
+        });
+    }
+
+    // Chart
+    const ctx = document.getElementById('menuChart').getContext('2d');
+    const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    
+    Chart.defaults.color = '#f8fafc';
+    Chart.defaults.font.family = 'Outfit';
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Submissions by Menu Type',
+                data: data,
+                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                borderColor: 'rgba(245, 158, 11, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.1)' } },
+                x: { grid: { color: 'rgba(255,255,255,0.1)' } }
+            },
+            plugins: {
+                legend: { labels: { color: '#f8fafc' } }
+            }
+        }
+    });
+</script>
+</body>
+</html>

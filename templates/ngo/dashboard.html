@@ -1,97 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NGO Dashboard</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 350px; border-radius: 1rem; }
+    </style>
 </head>
-<body class="bg-light">
+<body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-success">
-  <div class="container">
-    <a class="navbar-brand" href="#">Smart Food Distribution</a>
-    <div class="collapse navbar-collapse">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link active" href="/ngo/dashboard/">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
-
-<div class="container mt-4">
-    <h3 class="text-center">Available Surplus Food</h3>
-
-    {% if food_list %}
-        <div class="table-responsive mt-4">
-            <table class="table table-bordered table-hover bg-white">
-                <thead class="table-success">
-                    <tr>
-                        <th>Restaurant</th>
-                        <th>Event</th>
-                        <th>Attendees</th>
-                        <th>Menu Type</th>
-                        <th>Prepared (kg)</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for food in food_list %}
-                    <tr>
-                        <td>{{ food.restaurant.name }}</td>
-                        <td>{{ food.event_type }}</td>
-                        <td>{{ food.attendees }}</td>
-                        <td>{{ food.menu_type }}</td>
-                        <td>{{ food.prepared_quantity }}</td>
-                        <td>
-                            <form method="POST">
-                                {% csrf_token %}
-                                <input type="hidden" name="food_id" value="{{ food.id }}">
-                                <button type="submit" class="btn btn-sm btn-success">Accept</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="glass-nav text-white">
+        <div class="sidebar-header d-flex align-items-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1046/1046857.png" alt="Logo" width="40" class="me-2">
+            <h5 class="mb-0 fw-bold">Smart Food</h5>
         </div>
-    {% else %}
-        <p class="text-center mt-5 text-muted">No surplus food available right now.</p>
-    {% endif %}
+        <ul class="list-unstyled components mt-4">
+            <li class="active"><a href="/ngo/dashboard/"><i class="fas fa-home me-2"></i> Dashboard</a></li>
+            <li><a href="/ngo/analytics/"><i class="fas fa-chart-line me-2"></i> Analytics</a></li>
+            <li><a href="/ngo/logout/"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <div id="content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">Welcome, {{ ngo.name }} <span class="fs-5 text-muted">📍 {{ ngo.location }}</span></h2>
+        </div>
+
+        <!-- Cards Row -->
+        <div class="row mb-4">
+            <div class="col-md-4 animate-up delay-1">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Available Surplus</h6>
+                    <h2 class="display-5 fw-bold text-success">{{ available_food_count }}</h2>
+                    <p class="mb-0 text-muted">Ready to accept</p>
+                </div>
+            </div>
+            <div class="col-md-4 animate-up delay-2">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Total Accepted</h6>
+                    <h2 class="display-5 fw-bold text-primary">{{ total_accepted }}</h2>
+                    <p class="mb-0 text-muted">Donations received</p>
+                </div>
+            </div>
+            <div class="col-md-4 animate-up delay-3">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Food Quantity</h6>
+                    <h2 class="display-5 fw-bold text-warning">{{ total_kg_accepted }} <span class="fs-4">kg</span></h2>
+                    <p class="mb-0 text-muted">Total weight accepted</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <!-- Available Food Table -->
+            <div class="col-lg-8 mb-4 animate-up delay-1">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-utensils me-2 text-success"></i>Available Surplus Food</h5>
+                    {% if food_list %}
+                    <div class="table-responsive">
+                        <table class="table glass-table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Restaurant</th>
+                                    <th>Event</th>
+                                    <th>Menu</th>
+                                    <th>Qty (kg)</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for food in food_list %}
+                                <tr>
+                                    <td><strong>{{ food.restaurant.name }}</strong></td>
+                                    <td>{{ food.event_type }}</td>
+                                    <td><span class="badge bg-secondary">{{ food.menu_type }}</span></td>
+                                    <td>{{ food.prepared_quantity }}</td>
+                                    <td>
+                                        <form method="POST">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="food_id" value="{{ food.id }}">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm">Accept</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted p-4">
+                        <i class="fas fa-box-open fa-3x mb-3 text-light"></i>
+                        <p>No surplus food available right now.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Activity Feed (Accepted History) -->
+            <div class="col-lg-4 mb-4 animate-up delay-2">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-history me-2 text-info"></i>Recent Activity</h5>
+                    <div class="activity-feed">
+                        {% if accepted_list %}
+                            {% for entry in accepted_list|slice:":10" %}
+                            <div class="activity-item">
+                                <strong>Accepted {{ entry.surplus_food.prepared_quantity }}kg</strong>
+                                <p class="text-muted small mb-0">From {{ entry.surplus_food.restaurant.name }}</p>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ entry.accepted_on|date:"M d, Y h:i a" }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center mt-3">No recent activity.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
-<hr class="my-5">
-
-<h3 class="text-center">📦 Accepted Food History</h3>
-
-{% if accepted_list %}
-    <div class="table-responsive mt-4">
-        <table class="table table-bordered bg-white">
-            <thead class="table-secondary">
-                <tr>
-                    <th>Restaurant</th>
-                    <th>Event Type</th>
-                    <th>Attendees</th>
-                    <th>Quantity (kg)</th>
-                    <th>Accepted On</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in accepted_list %}
-                <tr>
-                    <td>{{ entry.surplus_food.restaurant.name }}</td>
-                    <td>{{ entry.surplus_food.event_type }}</td>
-                    <td>{{ entry.surplus_food.attendees }}</td>
-                    <td>{{ entry.surplus_food.prepared_quantity }}</td>
-                    <td>{{ entry.accepted_on|date:"Y-m-d H:i" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-{% else %}
-    <p class="text-center text-muted mt-4">You haven't accepted any food yet.</p>
-{% endif %}
-
-
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

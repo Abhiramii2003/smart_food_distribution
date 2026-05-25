@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 350px; border-radius: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="glass-nav text-white" style="background: rgba(31, 41, 55, 0.95);">
+        <div class="sidebar-header d-flex align-items-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1046/1046857.png" alt="Logo" width="40" class="me-2">
+            <h5 class="mb-0 fw-bold">Platform Admin</h5>
+        </div>
+        <ul class="list-unstyled components mt-4">
+            <li class="active"><a href="/admin-dashboard/"><i class="fas fa-chart-line me-2"></i> Overview</a></li>
+            <li><a href="/"><i class="fas fa-home me-2"></i> Home Page</a></li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <div id="content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">Platform Overview <span class="fs-5 text-muted">🌐 Global Statistics</span></h2>
+        </div>
+
+        <!-- Cards Row -->
+        <div class="row mb-4">
+            <div class="col-md-3 animate-up delay-1">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Total NGOs</h6>
+                    <h2 class="display-5 fw-bold text-primary">{{ total_ngos }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 animate-up delay-2">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Total Restaurants</h6>
+                    <h2 class="display-5 fw-bold text-danger">{{ total_restaurants }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 animate-up delay-3">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Surplus Events</h6>
+                    <h2 class="display-5 fw-bold text-warning">{{ total_surplus_events }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 animate-up delay-4">
+                <div class="glass-card p-4">
+                    <h6 class="text-muted text-uppercase fw-bold">Total Food Rescued</h6>
+                    <h2 class="display-5 fw-bold text-success">{{ total_food_kg }} <span class="fs-4">kg</span></h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <!-- Chart & Map -->
+            <div class="col-lg-6 mb-4 animate-up delay-1">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-chart-pie me-2 text-primary"></i>Global Food Sources (By Event)</h5>
+                    <canvas id="globalChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4 animate-up delay-2">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-globe-asia me-2 text-info"></i>Global Locations</h5>
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Global Activity Feed -->
+            <div class="col-lg-12 mb-4 animate-up delay-3">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-stream me-2 text-dark"></i>Platform Activity Timeline</h5>
+                    <div class="activity-feed" style="max-height: 500px;">
+                        {% if global_activity %}
+                            {% for entry in global_activity|slice:":20" %}
+                            <div class="activity-item" style="border-left-color: var(--primary);">
+                                <strong>{{ entry.ngo.name }}</strong> accepted <strong>{{ entry.surplus_food.prepared_quantity }}kg</strong> of food from <strong>{{ entry.surplus_food.restaurant.name }}</strong>
+                                <p class="text-muted small mb-0">Event: {{ entry.surplus_food.event_type }} | Menu: {{ entry.surplus_food.menu_type }}</p>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ entry.accepted_on|date:"M d, Y h:i a" }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center mt-3">No activity recorded yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ locations|json_script:"location-data" }}
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-data" }}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Map
+    const map = L.map('map').setView([10.8505, 76.2711], 7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    const locations = JSON.parse(document.getElementById('location-data').textContent);
+    locations.forEach(loc => {
+        let markerColor = loc.type === 'Restaurant' ? 'red' : 'blue';
+        L.marker([loc.lat, loc.lng])
+         .addTo(map)
+         .bindPopup(`<b>${loc.name}</b> (${loc.type})<br>${loc.info}`);
+    });
+
+    // Chart
+    const ctx = document.getElementById('globalChart').getContext('2d');
+    const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    
+    Chart.defaults.color = '#f8fafc';
+    Chart.defaults.font.family = 'Outfit';
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(139, 92, 246, 0.8)'
+                ],
+                borderColor: '#1e293b',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { color: '#f8fafc' } }
+            }
+        }
+    });
+</script>
+</body>
+</html>

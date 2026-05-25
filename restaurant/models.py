@@ -4,8 +4,13 @@ from django.db import models
 
 class Restaurant(models.Model):
     name = models.CharField(max_length=100)
+    address = models.TextField()
+    district = models.CharField(max_length=100)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     location = models.CharField(max_length=200)
     contact_email = models.EmailField()
+    password = models.CharField(max_length=100, default='temp1234')
     registered_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -19,6 +24,7 @@ class SurplusFood(models.Model):
     prepared_quantity = models.FloatField(help_text="in kg")
     predicted_surplus = models.FloatField(help_text="AI will predict this", null=True, blank=True)
     submitted_on = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.restaurant.name} - {self.event_type} ({self.attendees} guests)"

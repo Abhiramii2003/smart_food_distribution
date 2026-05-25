@@ -3,7 +3,7 @@ from restaurant.models import SurplusFood
 from .models import NGO, AcceptedFood
 from .forms import NGORegistrationForm, NGOLoginForm
 from django.contrib import messages
-
+from datetime import datetime
 
 # Create your views here.
 def ngo_dashboard(request):
@@ -13,20 +13,88 @@ def ngo_dashboard(request):
 
     ngo = get_object_or_404(NGO, pk=ngo_id)
 
+    # Step 1: Exclude already accepted food
     accepted_ids = AcceptedFood.objects.values_list('surplus_food_id', flat=True)
-    available_food = SurplusFood.objects.exclude(id__in=accepted_ids)
+    food_qs = SurplusFood.objects.exclude(id__in=accepted_ids)
+
+    # Step 2: Apply filters from GET params
+    # district = request.GET.get('district')
+    # date_str = request.GET.get('date')  # Expecting format YYYY-MM-DD
+    # event_type = request.GET.get('event_type')
+
+    # if district:
+    #     food_qs = food_qs.filter(restaurant__district__icontains=district)
+
+    # if date_str:
+    #     try:
+    #         date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    #         food_qs = food_qs.filter(submitted_on__date=date)
+    #     except ValueError:
+    #         pass  # Skip filter if date format is invalid
+
+    # if event_type:
+    #     food_qs = food_qs.filter(event_type__iexact=event_type)
+
+    # Step 3: Accepted history
     accepted_food = AcceptedFood.objects.filter(ngo=ngo).select_related('surplus_food')
 
+    # Step 4: Handle accept action
     if request.method == 'POST':
         food_id = request.POST.get('food_id')
         food = get_object_or_404(SurplusFood, pk=food_id)
         AcceptedFood.objects.create(ngo=ngo, surplus_food=food)
         return redirect('ngo_dashboard')
 
+    total_accepted = accepted_food.count()
+    available_food_count = food_qs.count()
+    total_kg_accepted = sum(item.surplus_food.prepared_quantity for item in accepted_food)
+
     return render(request, 'ngo/dashboard.html', {
-        'food_list': available_food,
+        'ngo': ngo,
+        'food_list': food_qs,
         'accepted_list': accepted_food,
+        'total_accepted': total_accepted,
+        'available_food_count': available_food_count,
+        'total_kg_accepted': total_kg_accepted,
     })
+
+def ngo_analytics(request):
+    ngo_id = request.session.get('ngo_id')
+    if not ngo_id:
+        return redirect('ngo_login')
+
+    ngo = get_object_or_404(NGO, pk=ngo_id)
+
+    accepted_ids = AcceptedFood.objects.values_list('surplus_food_id', flat=True)
+    food_qs = SurplusFood.objects.exclude(id__in=accepted_ids)
+
+    restaurant_locations = [
+        {
+            'lat': food.restaurant.latitude,
+            'lng': food.restaurant.longitude,
+            'name': food.restaurant.name,
+            'event': food.event_type,
+            'quantity': food.prepared_quantity
+        }
+        for food in food_qs if food.restaurant.latitude and food.restaurant.longitude
+    ]
+
+    event_type_counts = {}
+    for f in food_qs:
+        event_type_counts[f.event_type] = event_type_counts.get(f.event_type, 0) + 1
+    
+    chart_labels = list(event_type_counts.keys())
+    chart_data = list(event_type_counts.values())
+
+    return render(request, 'ngo/analytics.html', {
+        'ngo': ngo,
+        'restaurant_locations': restaurant_locations,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data,
+    })
+
+
+
 
 
 

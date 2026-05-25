@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGO Analytics</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 500px; border-radius: 1rem; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="glass-nav text-white">
+        <div class="sidebar-header d-flex align-items-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/1046/1046857.png" alt="Logo" width="40" class="me-2">
+            <h5 class="mb-0 fw-bold">Smart Food</h5>
+        </div>
+        <ul class="list-unstyled components mt-4">
+            <li><a href="/ngo/dashboard/"><i class="fas fa-home me-2"></i> Dashboard</a></li>
+            <li class="active"><a href="/ngo/analytics/"><i class="fas fa-chart-line me-2"></i> Analytics</a></li>
+            <li><a href="/ngo/logout/"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <div id="content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold">Visual Analytics <span class="fs-5 text-muted">📍 {{ ngo.location }}</span></h2>
+        </div>
+
+        <div class="row">
+            <!-- Chart -->
+            <div class="col-lg-5 mb-4 animate-up delay-1">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-chart-pie me-2 text-primary"></i>Available by Event Type</h5>
+                    <div style="height: 400px;">
+                        <canvas id="eventChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Map -->
+            <div class="col-lg-7 mb-4 animate-up delay-2">
+                <div class="glass-card p-4 h-100">
+                    <h5 class="fw-bold mb-4"><i class="fas fa-map-marker-alt me-2 text-danger"></i>Live Surplus Locations</h5>
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ restaurant_locations|json_script:"location-data" }}
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_data|json_script:"chart-data" }}
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    // Leaflet Map Initialization
+    const map = L.map('map').setView([10.8505, 76.2711], 8);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const locations = JSON.parse(document.getElementById('location-data').textContent);
+    locations.forEach(loc => {
+        L.marker([loc.lat, loc.lng])
+         .addTo(map)
+         .bindPopup(`<b>${loc.name}</b><br>Event: ${loc.event}<br>${loc.quantity} kg`);
+    });
+
+    // Chart.js Initialization
+    const ctx = document.getElementById('eventChart').getContext('2d');
+    const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    
+    Chart.defaults.color = '#f8fafc';
+    Chart.defaults.font.family = 'Outfit';
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(245, 158, 11, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(139, 92, 246, 0.8)'
+                ],
+                borderColor: '#1e293b',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#f8fafc' } }
+            }
+        }
+    });
+</script>
+</body>
+</html>
