@@ -16,9 +16,20 @@ class NGO(models.Model):
     def __str__(self):
         return self.name
 
+class Volunteer(models.Model):
+    ngo = models.ForeignKey(NGO, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=20)
+    vehicle_type = models.CharField(max_length=50)
+    registered_on = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.vehicle_type})"
+
 class AcceptedFood(models.Model):
     ngo = models.ForeignKey(NGO, on_delete=models.CASCADE)
     surplus_food = models.ForeignKey(SurplusFood, on_delete=models.CASCADE)
+    volunteer = models.ForeignKey(Volunteer, null=True, blank=True, on_delete=models.SET_NULL, related_name='deliveries')
     accepted_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

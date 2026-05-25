@@ -5,6 +5,8 @@ Smart Food Distribution is a comprehensive web platform designed to bridge the g
 ## 🚀 Features
 
 * **Premium UI/UX:** A stunning, state-of-the-art dark theme featuring glassmorphism, glowing accents, and smooth staggered entrance animations.
+* **Real-Time WebSockets:** Powered by Django Channels, NGOs receive instant, live Toast notifications the second a restaurant submits new surplus food—no page refresh required!
+* **Volunteer Logistics:** NGOs can register a fleet of volunteers (bikes, cars, vans) and actively assign drivers to pick up accepted food donations from a dedicated Logistics dashboard.
 * **Role-Based Access:** Dedicated dashboards for Restaurants (Donors), NGOs (Receivers), and Admins (Platform Overseers).
 * **Live Surplus Tracking:** NGOs can instantly view and accept available surplus food in their area.
 * **Visual Analytics:** Fully integrated Chart.js doughnut charts and interactive Leaflet dark-mode maps to track food distribution geographically and by event type.
@@ -12,8 +14,8 @@ Smart Food Distribution is a comprehensive web platform designed to bridge the g
 
 ## 🛠️ Technology Stack
 
-* **Backend:** Python, Django
-* **Frontend:** HTML5, Vanilla CSS, Bootstrap 5
+* **Backend:** Python, Django, Django Channels (WebSockets)
+* **Frontend:** HTML5, Vanilla CSS, Bootstrap 5, JavaScript
 * **Data Visualization:** Chart.js, Leaflet.js
 * **Containerization:** Docker
 

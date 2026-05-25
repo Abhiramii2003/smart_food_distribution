@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from .models import Restaurant, SurplusFood
 from .forms import SurplusFoodForm, RestaurantRegistrationForm, RestaurantLoginForm
 
@@ -49,6 +51,19 @@ def surplus_food_view(request):
             surplus_food = form.save(commit=False)
             surplus_food.restaurant = restaurant
             surplus_food.save()
+            
+            # Trigger WebSocket Notification
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'ngo_notifications',
+                {
+                    'type': 'ngo_notification',
+                    'message': f"New Surplus Food Available!",
+                    'restaurant_name': restaurant.name,
+                    'quantity': float(surplus_food.prepared_quantity)
+                }
+            )
+
             return redirect('restaurant_dashboard')
     else:
         form = SurplusFoodForm()

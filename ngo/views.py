@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from restaurant.models import SurplusFood
-from .models import NGO, AcceptedFood
+from .models import NGO, AcceptedFood, Volunteer
 from .forms import NGORegistrationForm, NGOLoginForm
 from django.contrib import messages
 from datetime import datetime
@@ -93,10 +93,44 @@ def ngo_analytics(request):
         'chart_data': chart_data,
     })
 
+def ngo_logistics(request):
+    ngo_id = request.session.get('ngo_id')
+    if not ngo_id:
+        return redirect('ngo_login')
 
+    ngo = get_object_or_404(NGO, pk=ngo_id)
 
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add_volunteer':
+            name = request.POST.get('name')
+            phone = request.POST.get('phone')
+            vehicle_type = request.POST.get('vehicle_type')
+            Volunteer.objects.create(ngo=ngo, name=name, phone=phone, vehicle_type=vehicle_type)
+            messages.success(request, f"Volunteer {name} added successfully.")
+            
+        elif action == 'assign_volunteer':
+            food_id = request.POST.get('food_id')
+            volunteer_id = request.POST.get('volunteer_id')
+            
+            food = get_object_or_404(AcceptedFood, pk=food_id, ngo=ngo)
+            volunteer = get_object_or_404(Volunteer, pk=volunteer_id, ngo=ngo)
+            
+            food.volunteer = volunteer
+            food.save()
+            messages.success(request, f"Assigned {volunteer.name} to pickup {food.surplus_food.restaurant.name}'s food.")
+            
+        return redirect('ngo_logistics')
 
+    volunteers = Volunteer.objects.filter(ngo=ngo).order_by('-registered_on')
+    deliveries = AcceptedFood.objects.filter(ngo=ngo).select_related('surplus_food', 'volunteer').order_by('-accepted_on')
 
+    return render(request, 'ngo/logistics.html', {
+        'ngo': ngo,
+        'volunteers': volunteers,
+        'deliveries': deliveries,
+    })
 
 def ngo_register(request):
     if request.method == 'POST':
